@@ -1,0 +1,17 @@
+# Created by http://www.gitignore.io
+
+### OCaml ###
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
+
+### Linux ###
+*~
+
