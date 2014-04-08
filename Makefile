@@ -4,8 +4,8 @@ EXEC = formuleTester
 
 SRC_DIR = src/
 
-SRC_RAW =	test.ml		\
-		test2.ml
+SRC_RAW =	structure.ml	\
+		projet.ml
 
 SRC = $(addprefix $(SRC_DIR), $(SRC_RAW))
 
