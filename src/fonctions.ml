@@ -83,12 +83,52 @@ let listeVariables f =
   in aux [] (ensembleVariables f);;
 
 
+(* Choix de la meilleur variable *)
+let choixVariable listeV = 
+  let rec aux listeV choix =
+    match listeV with 
+  | [] -> choix
+  | (p,q)::t -> if q > snd choix then aux t (p,q)
+    else aux t choix
+  in aux listeV ("",0);;
+
+(* Suppression d'une variable *) 
+let suppVariable listeV choix = 
+  let rec aux listeV listeCopie = 
+    match listeV with 
+    | [] -> listeCopie 
+    | h::t -> if h = choix then (listeCopie@t) 
+      else aux t (h::listeCopie)
+  in aux listeV []
+;;
+
+
+(* Attribution de la variable x par une valeur*)
+let attributionValeur f variableX valeurX =
+  let rec aux f =
+    match f with 
+    |Valeur x -> Valeur x
+    |Variable x -> if (x = variableX) then Valeur valeurX 
+      else Variable x
+    | Et(p,q) -> Et((aux p),(aux q))
+    | Ou(p,q) -> Ou ((aux p),(aux q))
+    | Negation p -> Negation (aux p)
+  in aux f
+;;
+
+
+
 (* Algo de Satisfiabilite *)
 let satisfiabilite = function formule -> 
-  let rec aux Val F =
-    match F with 
-    | [] -> Val 
-    | h::t -> let V = ensembleV
+  let rec aux valeurs f =
+    match f with 
+    | [] -> valeurs 
+    | h::t -> let v = (listeVariables h) 
+	      in let x = (choixVariable v)
+		 in let v = (suppVariable v x)
+		    in let f1 = (attributionValeur h x True)
+		       in let f2 = (attributionValeur h x False)  
+		
   in aux [] [sub formule]
 ;;
 
@@ -97,8 +137,6 @@ let satisfiabilite = function formule ->
 
 
 (* Zone de testes *)
-let f1 = Et (( (True)), (Negation True));;
-reductionEquivalences f1;;
 let megaFormule =
  Et(
    (Implique 
@@ -106,12 +144,6 @@ let megaFormule =
    (Equivalence
       (Negation (Variable "P"), Variable "S")));;
 
-reductionEquivalences (sub megaFormule);;
+attributionValeur (reductionEquivalences (sub megaFormule)) "Q" True ;;
 
-listeVariables f2;;
-
-let t = sub megaFormule;;
-to_String too;;
-
-let too =  Ou(Negation (Variable "R"),Negation(Variable"Q"));;
-reductionEquivalences too;;
+choixVariable(listeVariables (sub megaFormule));;
