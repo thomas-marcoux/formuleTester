@@ -55,6 +55,13 @@ let rec reductionEquivalences f =
   | Variable x -> Variable x
 ;;
 
+
+(*Applique autant que possible reductionEquivalences*)
+let rec reductionEqBoucle f =
+  let f2 = reductionEquivalences f in
+  if (f2=f) then f2 else reductionEqBoucle f2;;
+
+
 (* Stockage des variables propositionnelles *)
 let rec ensembleVariables f  = 
   match f with 
@@ -120,14 +127,26 @@ let attributionValeur f variableX valeurX =
 
 (* Algo de Satisfiabilite *)
 let satisfiabilite = function formule -> 
-  let rec aux valeurs f =
-    match f with 
-    | [] -> valeurs 
-    | h::t -> let v = (listeVariables h) 
-	      in let x = (choixVariable v)
-		 in let v = (suppVariable v x)
-		    in let f1 = (attributionValeur h x True)
-		       in let f2 = (attributionValeur h x False)  
+  let rec aux valeur l =
+    match l with 
+    | [] -> []
+    | h::t -> let v = (listeVariables h) in
+	      let x = (choixVariable v) in
+	      let v = (suppVariable v x) in
+	      let f1 = (attributionValeur h (fst x) True) in
+	      let f2 = (attributionValeur h (fst x) False) in
+	      let f1 = reductionEqBoucle f1  in
+	      let f2 = reductionEqBoucle f2  in
+	      match (f1,f2) with 
+	      | (Valeur False , Valeur False ) -> []
+	      | (Valeur False , Valeur True  ) -> valeur @ [((fst x),false)] 
+	      | (Valeur True  , Valeur False ) -> valeur @ [((fst x),true)] 
+	      | (Valeur True  , Valeur True  ) -> valeur @ [((fst x),true)] @ valeur @ [((fst x),false)]	    
+	      | (Valeur False , _            ) -> aux (valeur@[((fst x),false)]) ([f2])
+	      | (_            , Valeur False ) -> aux (valeur@[((fst x),true)]) ([f1])
+	      | (Valeur True  , _            ) -> valeur@[((fst x),true)]@ (aux (valeur@[((fst x),false)]) [f2])
+	      | (_            , Valeur True  ) -> valeur@[((fst x),false)]@ (aux (valeur@[((fst x),true)]) [f1]) 
+	      | (_            , _            ) -> ((aux (valeur@[((fst x),true)]) ([f1]) )) @ ((aux (valeur@[((fst x),false)]) ([f2]) ))
 		
   in aux [] [sub formule]
 ;;
@@ -136,14 +155,23 @@ let satisfiabilite = function formule ->
 
 
 
-(* Zone de testes *)
+(* Zone de tests *)
 let megaFormule =
  Et(
    (Implique 
-      (Variable "Q", Variable "S")),
+      (Variable "Q", Variable "P")),
    (Equivalence
       (Negation (Variable "P"), Variable "S")));;
 
-attributionValeur (reductionEquivalences (sub megaFormule)) "Q" True ;;
+let formule = Ou (Variable "Q",Variable "P");;
+let f =Ou(Variable "P",Variable "S");;
+let f2 = Et (Negation (Variable "P"),Variable "P");; (*Toujours fausse*)
+satisfiabilite megaFormule;;
 
-choixVariable(listeVariables (sub megaFormule));;
+
+
+
+reductionEqBoucle (sub megaFormule);;
+
+
+reductionEqBoucle (attributionValeur (sub f) "Q" True) ;;
