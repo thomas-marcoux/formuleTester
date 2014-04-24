@@ -37,17 +37,23 @@ let rec to_String (formule: 'a formule_prop) =
 (* Utiliser pour afficher la liste de Couple *)
 let rec to_StringCouple (liste: (string*bool) list) =
   match liste with 
-  | [] -> "" 
+  | [] -> ""
+  | (x, true)::[] -> "(" ^ x ^ ": True)"
+  | (x, false)::[] -> "(" ^ x ^ ": False)"
   | (x ,true)::t -> "(" ^ x ^ ": True), " ^ (to_StringCouple t)
   | (x, false)::t -> "(" ^ x ^ ": False), " ^ (to_StringCouple t)
 ;;
- 
+
+
 (* Affichage de la liste de couple *)
 let rec to_StringCoupleListe (liste: (string*bool) list list) = 
   match liste with 
   | [] -> "" 
+  | h::[] -> (to_StringCouple h)
   | h::t -> (to_StringCouple h) ^ " | " ^ (to_StringCoupleListe t)
 ;;
+
+
 
 
 (* Substitution de Implique et Equivalence par leurs correspondances *)
@@ -178,20 +184,20 @@ let egals (listeUn:(string*bool) list) (listeDeux:(string*bool) list) =
   in aux listeDeux
 ;;
 
-let jointureList (listeDeux:(string*bool) list) (listeUn:(string*bool) list) = 
+(* let jointureList (listeDeux:(string*bool) list) (listeUn:(string*bool) list) = 
   let rec aux listeUn listeJoin = 
     match listeUn with 
     | [] -> listeJoin
     | h::t -> if (List.mem_assoc (fst h) listeDeux) then aux t listeJoin
       else aux t listeJoin @ [h]
   in aux listeUn listeDeux
-;;
+;;*)
 
 let correspond (listeUn:(string*bool) list) (listeDeux:(string*bool) list list) =
   let rec aux listeDeux listMem = 
     match listeDeux with 
     | []  -> listMem
-    | h::t -> if egals h listeUn then aux t (listMem @ [jointureList h listeUn])
+    | h::t -> if egals h listeUn then aux t (listMem @ [ h] @ [listeUn])
       else aux t listMem
   in aux listeDeux []
 ;;
@@ -203,13 +209,24 @@ let rec suppListeCouple (newListe:(string*bool) list list) (listeCouples:(string
   | h::t -> suppListeCouple newListe t (listeMem@(correspond h newListe))
 ;;
 
+
+let suppDouble (liste:(string*bool) list list) = 
+  let rec aux liste listeMem = 
+    match liste with 
+    | [] -> listeMem
+    | h::t -> if not (List.mem h t) then aux t listeMem@[h]
+      else aux t listeMem
+  in aux liste []
+;;
+
+ 
 (* Algorithme d'ensemble de Satisfiabilite *)
  let ensembleSatisfiabilite (listeFonc: 'a formule_prop list) =
-  let rec aux listeFonc listeCouple = 
+  let rec aux listeFonc affichage listeCouple = 
     match listeFonc with 
-    | [] -> to_StringCoupleListe(listeCouple)
-    | h::t -> (to_String h) ^ "  =>  " ^ (aux t (suppListeCouple (satisfiabilite h) listeCouple []))
-  in aux listeFonc (satisfiabilite (List.hd listeFonc))
+    | [] -> affichage ^ to_StringCoupleListe(suppDouble(listeCouple))
+    | h::t ->  (aux t (affichage ^ (to_String h) ^ "  =>  ") (suppListeCouple (satisfiabilite h) listeCouple []))
+  in aux listeFonc "" (satisfiabilite (List.hd listeFonc))
 ;;  
 
 
@@ -240,6 +257,7 @@ let balayage = fun f1
 			  else aux t
 	in aux (listeVariables f);;
 
+
 (************************************
 ********* SaisieClavier.ml **********
 *************************************)
@@ -250,8 +268,8 @@ exception FormuleIncorrecte;;
 exception ListeVideError;;
 
 (* Reduction de la formule d'un cran *)
-let rec formuleCorrecte (f: 'a formule_prop) = 
-  match f with
+let rec formuleCorrecte (formule: 'a formule_prop) = 
+  match formule with
   | Valeur Indefini -> false
   | Valeur _ -> true
   | Variable _ -> true
@@ -263,9 +281,9 @@ let rec formuleCorrecte (f: 'a formule_prop) =
 ;;
 
 
-let convertions (list:'a formule_prop list) = 
-  let rec aux list = 
-    match list with 
+let convertions (liste:'a formule_prop list) = 
+  let rec aux liste = 
+    match liste with 
     | [] -> []
     | a::[] -> 
       begin match (formuleCorrecte a) with 
@@ -510,8 +528,7 @@ let convertions (list:'a formule_prop list) =
       (* Cas "Negation", "Et", "Ou", "Implique", "Equivalence", "Valeur", "Variable" déjà remplis *)
       | (Negation _) | (Et(_,_)) | (Ou(_,_)) | (Implique(_,_)) | (Equivalence(_,_)) | (Valeur _) | (Variable _) -> a::(aux (b::c::t))
       end
-  in aux list
-
+  in aux liste
 ;;
 
 (* Exctraction de la formule propositionnelle *)
@@ -519,15 +536,15 @@ let extraction (liste:'a formule_prop list) =
   List.hd liste;;
 
 (* Applique autant que possible formuleCorrecte *)
-let rec applicationConvertions (list: 'a formule_prop list) =
-  let l2 = (convertions list) in
-  if (l2 = list) then 
+let rec applicationConvertions (liste: 'a formule_prop list) =
+  let listeDeux = (convertions liste) in
+  if (listeDeux = liste) then 
     begin
-      match (formuleCorrecte (extraction list)) with
-      |true -> list
+      match (formuleCorrecte (extraction liste)) with
+      | true -> liste
       | false -> raise FormuleIncomplete
     end 
-  else (applicationConvertions l2);;
+  else (applicationConvertions listeDeux);;
 
 (* Supprime le dernier element de la liste *)
 let rec remove (liste: 'a formule_prop list)  =
@@ -555,18 +572,17 @@ let put_on_file (liste: 'a formule_prop list)  chaine =
 
 
 (* Affichage de la liste de formules propositionnelles *)
-let string_of_list l =
-  let rec aux l res = 
-    match l with 
+let string_of_list liste =
+  let rec aux liste res = 
+    match liste with 
     | [] -> res
     | h::t -> aux t (res ^ (to_String h) ^ " | ")
-  in aux l "Liste : ";; 
-
+  in aux liste "Liste : ";; 
 
 
 (* Text d'aide *)
 let textHelp =
-  "\n\n -- Mode d'emploi du logiciel de valuation de formules -- \n\n
+  let str =  "\n\n -- Mode d'emploi du logiciel de valuation de formules -- \n\n
 
  Fonctions du Logiciel :
 
@@ -596,28 +612,29 @@ exit : Permet de mettre fin au programme. \n
 <code> end (Pour afficher le résultat de cette unique fonction)
 
 \n\n -- Fin du mode d'emploi -- \n\n"
+  in str
 ;;
 
 (* Boucle de saisie Clavier *)
-let rec toplevel (f:'a formule_prop list) (liste: 'a formule_prop list) =  
-  if f = [] then print_string "\nVeuillez rentrer une fonction.\n\n"
-  else print_string ((string_of_list f) ^ "\n\n");
-
+let rec toplevel (liste:'a formule_prop list) (listeFormule: 'a formule_prop list) =  
+  if liste = [] then print_string "\nVeuillez rentrer une fonction.\n\n"
+  else print_string ((string_of_list liste) ^ "\n\n");
+  
   print_string "<Code> ";
   let s = read_line() in 
   if s = "exit" then print_string "\n Merci et au revoir !\n"
-  else if s = "help" then begin print_string (textHelp); toplevel f liste end
+  else if s = "help" then begin print_string (textHelp); toplevel liste listeFormule end
   else if s = "again" then
-    if (List.length f) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel f liste end
-    else toplevel [] ((applicationConvertions f)@liste)
+    if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
+    else toplevel [] ((applicationConvertions liste)@listeFormule)
   else if s = "end" then
-    if (List.length f) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel f liste end
-    else begin print_string ((ensembleSatisfiabilite ((applicationConvertions f)@liste))); toplevel [] [] end
-  else try toplevel (put_on_file f s) liste with 
-  | ConvertionImpossible -> print_string "Erreur : Vous-vous êtes trompé(e)de commande, veuillez recommencer. \n"; toplevel f liste
-  | FormuleIncomplete ->  print_string "Erreur : Votre formule n'est pas complète veuillez recommencer. \n"; toplevel f liste
-  | FormuleIncorrecte ->  print_string "Erreur : Vous-vous êtes trompé(e) dans la formule, veuillez recommencer. \n"; toplevel f liste
-  | ListeVideError -> print_string "Erreur : Vous n'avez rien à supprimer. \n"; toplevel f liste ;;
+    if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
+    else begin print_string ((ensembleSatisfiabilite ((applicationConvertions liste)@listeFormule))); toplevel [] [] end
+  else try toplevel (put_on_file liste s) listeFormule with 
+  | ConvertionImpossible -> print_string "Erreur : Vous-vous êtes trompé(e)de commande, veuillez recommencer. \n"; toplevel liste listeFormule
+  | FormuleIncomplete ->  print_string "Erreur : Votre formule n'est pas complète veuillez recommencer. \n"; toplevel liste listeFormule
+  | FormuleIncorrecte ->  print_string "Erreur : Vous-vous êtes trompé(e) dans la formule, veuillez recommencer. \n"; toplevel liste listeFormule
+  | ListeVideError -> print_string "Erreur : Vous n'avez rien à supprimer. \n"; toplevel liste listeFormule ;;
 
 
 
@@ -628,35 +645,72 @@ let rec toplevel (f:'a formule_prop list) (liste: 'a formule_prop list) =
 ********* Main.ml ********************
 **************************************)
 
+(* Test 1 *)
+let t1 = Equivalence (
+  Et(Implique(Variable "p", Variable "q"), 
+     Et(Et(Variable "p",
+	   Implique(Variable "q", Variable"r")), 
+	Implique(Variable "r", Negation(Variable "p"))))
+    ,Negation(Variable"p"));;
+
+balayage t1;;
+ensembleSatisfiabilite [t1];;
+
+(* Test 2 *)
+let t2 = Ou(
+  Implique(Et(Negation(Variable "r"),Negation(Variable "s")), 
+	   Variable "p"),
+  Implique(Variable "q", Variable "r"));;
+
+balayage t2;;
+ensembleSatisfiabilite [t2];;
+
+(* Test 3 *)
+let t3 = Et(Implique(Variable "q", Variable "s"),
+Implique(Negation(Variable "q"), Variable "r"));;
+
+balayage t3;;
+ensembleSatisfiabilite [t3];;
+
+(* Test 4 *)
+let t4 = Et(Ou(Negation(Variable "p"),
+	       Et(Variable "q", Variable "r")),
+	    Negation(Variable "q"));;
+
+balayage t4;;
+ensembleSatisfiabilite [t4];;
+
+(* Test 5 *)
+let f11 = Et(Variable "p", Implique(Variable "q", Variable "r"));;
+let f12 = Negation(Variable "p");;
+
+balayage f11;;
+balayage f12;;
+ensembleSatisfiabilite [f11;f12];;
+
+(* Test 6 *)
+let f21 = Implique(Equivalence(Variable "q", Variable "r"), Variable "p");;
+let f22 = Implique(Variable "q", Variable "r");;
+
+balayage f21;;
+balayage f22;;
+ensembleSatisfiabilite [f21;f22];;
+
+
+(* Test 7 *)
+let t17 = Ou(Variable "s", Negation(Variable "q"));;
+let t27 = Negation(Variable "s");;
+
+ensembleSatisfiabilite [t17;t27];;
+balayage t17;;
+balayage t27;;
+satisfiabilite t17;;
+satisfiabilite t27;;
+
+
+
 (* On affiche le premier message *) 
-let main() = print_string "-- Logiciel de Valuation de formules --  (help : Mode d'emploi)\n";  
-toplevel [] [];;
+let main() = print_string "-- Logiciel de Valuation de formules --  (help : Mode d'emploi)\n";  toplevel [] [];;
 
 (* On lance le programme *) 
 main();;
-
-
-(* Zone de tests 
-
-(* 1 *)
-let megaFormule =
- Et(
-   (Implique 
-      (Variable "Q", Variable "P")),
-   (Equivalence
-      (Negation (Variable "P"), Variable "S")));;
-read (ensembleSatisfiabilite [megaFormule]);;
-
-
-(* 2 *)
-let formule = Ou (Variable "Q",Variable "P");;
-satisfiabilite formule;;
-
-(* 3 *)
-let f2 = Et (Negation (Variable "P"),Variable "P");; (* Toujours fausse *)
-satisfiabilite f2;;
-
-(* 4 *)
-read (ensembleSatisfiabilite [megaFormule;formule;f2]);;
-
-*)
