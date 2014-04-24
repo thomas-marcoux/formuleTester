@@ -1,9 +1,2 @@
 Universite d'Orleans, France
 Projet OCaml de L2, Semestre 4
-
-Tapez simplement "make" pour compiler les sources.
-Ajoutez les noms de vos sources dans la liste "SRC_RAW" (sans oublier le
-'\' en fin de ligne pour echaper le saut de ligne).
-Placez les dans le dossier "src" sans l'indiquer dans le nom du fichier
-(test.ml et non src/test.ml, addprefix sert precisement a ajouter le 
-nom du dossier pour chaque fichier).
