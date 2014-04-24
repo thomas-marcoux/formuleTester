@@ -568,7 +568,7 @@ let string_of_list l =
 let textHelp =
   "\n\n -- Mode d'emploi du logiciel de valuation de formules -- \n\n
 
-Fonctions du Logiciel :
+ Fonctions du Logiciel :
 
 help : Affiche le mode d'emploi du logiciel.
 again : Permet de commencer une nouvelle formule.
@@ -584,15 +584,7 @@ Imp : Ajoute l'opérateur Implique().
 Equi : Ajoute l'opérateur Equivalence().
 exit : Permet de mettre fin au programme. \n
 
-Exemple: Et(P, Q) veuillez taper:
-<code> And
-<code> Var
-<code Variable> P
-<code> Var
-<code Variable> Q
-<code> end (Pour afficher le resulat de cette unique fonction) 
-
-Exemple: Ou(!P, Et(True, Q) veuillez taper:
+ Exemple: Ou(!P, Et(True, Q) veuillez taper:
 <code> Or
 <code> Not
 <code> Var
