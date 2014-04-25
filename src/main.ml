@@ -26,8 +26,8 @@ let rec to_String (formule: 'a formule_prop) =
     | Ou (p,q) -> "(" ^ (to_String p) ^ ") || (" ^ (to_String q) ^ ")"
     | Et (p,q) -> "(" ^ (to_String p) ^ ") && (" ^ (to_String q) ^ ")"
     | Negation p -> "!"^ (to_String p) 
-    | Implique (p,q) -> "("^(to_String p) ^ ") => (" ^ (to_String q) ^ ")"
-    | Equivalence (p,q) -> "("^(to_String p) ^ ") <=> (" ^ (to_String q) ^ ")"
+    | Implique (p,q) -> "(" ^ (to_String p) ^ ") -> (" ^ (to_String q) ^ ")"
+    | Equivalence (p,q) -> "(" ^ (to_String p) ^ ") <-> (" ^ (to_String q) ^ ")"
     | Valeur True -> "True" 
     | Valeur False -> "False"
     | Valeur Indefini -> "Indefini"
@@ -148,7 +148,6 @@ let attributionValeur (formule: 'a formule_prop) (variableX: string) (valeurX: v
 ;;
 
 
-
 (* Algorithme de Satisfiabilite *)
 let satisfiabilite = function (formule: 'a formule_prop) -> 
   let rec aux valeur formuleEliminee =
@@ -172,7 +171,7 @@ let satisfiabilite = function (formule: 'a formule_prop) ->
   in aux [] [elimination formule]
 ;;
 
-
+(* Verifie si deux liste simple (string * bool) list sont égale *)
 let egals (listeUn:(string*bool) list) (listeDeux:(string*bool) list) =
   let rec aux listeDeux= 
     match listeDeux with 
@@ -184,32 +183,27 @@ let egals (listeUn:(string*bool) list) (listeDeux:(string*bool) list) =
   in aux listeDeux
 ;;
 
-(* let jointureList (listeDeux:(string*bool) list) (listeUn:(string*bool) list) = 
-  let rec aux listeUn listeJoin = 
-    match listeUn with 
-    | [] -> listeJoin
-    | h::t -> if (List.mem_assoc (fst h) listeDeux) then aux t listeJoin
-      else aux t listeJoin @ [h]
-  in aux listeUn listeDeux
-;;*)
-
-let correspond (listeUn:(string*bool) list) (listeDeux:(string*bool) list list) =
-  let rec aux listeDeux listMem = 
-    match listeDeux with 
+(* Si la listeCouple egale une liste de newListe on ajoute la plus grande *)
+let correspond (listeCouples:(string*bool) list) (newListe:(string*bool) list list) =
+  let rec aux newListe listMem = 
+    match newListe with 
     | []  -> listMem
-    | h::t -> if egals h listeUn then aux t (listMem @ [ h] @ [listeUn])
+    | h::t -> if egals h listeCouples then
+	if(List.length h) > (List.length listeCouples)then aux t (listMem @ [h])
+	else aux t (listMem @ [listeCouples])
       else aux t listMem
-  in aux listeDeux []
+  in aux newListe []
 ;;
 
-
+(* Pour toute liste de listeCouples on test si elle correspond à newListe
+   si oui on ajoute celles qui correspondes *)
 let rec suppListeCouple (newListe:(string*bool) list list) (listeCouples:(string*bool) list list) (listeMem:(string*bool) list list) = 
   match listeCouples with 
   | [] -> listeMem
-  | h::t -> suppListeCouple newListe t (listeMem@(correspond h newListe))
+  | h::t -> suppListeCouple newListe t (listeMem @ (correspond h newListe))
 ;;
 
-
+(* Supprime les doublons dans une liste *)
 let suppDouble (liste:(string*bool) list list) = 
   let rec aux liste listeMem = 
     match liste with 
@@ -225,18 +219,9 @@ let suppDouble (liste:(string*bool) list list) =
   let rec aux listeFonc affichage listeCouple = 
     match listeFonc with 
     | [] -> affichage ^ to_StringCoupleListe(suppDouble(listeCouple))
-    | h::t ->  (aux t (affichage ^ (to_String h) ^ "  =>  ") (suppListeCouple (satisfiabilite h) listeCouple []))
+    | h::t ->  (aux t (affichage ^ (to_String h) ^ "  **  ") (suppListeCouple (satisfiabilite h) listeCouple []))
   in aux listeFonc "" (satisfiabilite (List.hd listeFonc))
 ;;  
-
-
-(* Algorithme principal de Satisfiabilite
-let satisfiabiliteEnchaine = function (liste: 'a formule_prop list) ->
-  let rec aux = fun liste assocList ->
-    match liste with
-    | [] -> assocList
-    | h::t -> aux t (assocList ^ (to_String h)^ " = " ^ (to_StringCoupleListe (satisfiabilite h)) ^ " ")
-  in aux liste "";;*)
 
 (*********************************
 ********* Balayage.ml ************
@@ -531,16 +516,13 @@ let convertions (liste:'a formule_prop list) =
   in aux liste
 ;;
 
-(* Exctraction de la formule propositionnelle *)
-let extraction (liste:'a formule_prop list) = 
-  List.hd liste;;
 
 (* Applique autant que possible formuleCorrecte *)
 let rec applicationConvertions (liste: 'a formule_prop list) =
   let listeDeux = (convertions liste) in
   if (listeDeux = liste) then 
     begin
-      match (formuleCorrecte (extraction liste)) with
+      match (formuleCorrecte (List.hd liste)) with
       | true -> liste
       | false -> raise FormuleIncomplete
     end 
@@ -646,66 +628,172 @@ let rec toplevel (liste:'a formule_prop list) (listeFormule: 'a formule_prop lis
 **************************************)
 
 (* Test 1 *)
-let t1 = Equivalence (
-  Et(Implique(Variable "p", Variable "q"), 
-     Et(Et(Variable "p",
-	   Implique(Variable "q", Variable"r")), 
-	Implique(Variable "r", Negation(Variable "p"))))
-    ,Negation(Variable"p"));;
+let t1 =
+  Equivalence (
+    Et(
+      Implique(
+	Variable "p",
+	Variable "q"), 
+      Et(
+	Et(
+	  Variable "p",
+	  Implique(
+	    Variable "q",
+	    Variable"r")), 
+	Implique(
+	  Variable "r",
+	  Negation(
+	    Variable "p"))))
+      ,Negation(
+	Variable"p"));;
 
-balayage t1;;
 ensembleSatisfiabilite [t1];;
 
 (* Test 2 *)
-let t2 = Ou(
-  Implique(Et(Negation(Variable "r"),Negation(Variable "s")), 
-	   Variable "p"),
-  Implique(Variable "q", Variable "r"));;
+let t2 =
+  Ou(
+    Implique(
+      Et(
+	Negation(Variable "r"),
+	Negation(Variable "s")), 
+      Variable "p"),
+    Implique(
+      Variable "q",
+      Variable "r"));;
 
-balayage t2;;
 ensembleSatisfiabilite [t2];;
 
 (* Test 3 *)
-let t3 = Et(Implique(Variable "q", Variable "s"),
-Implique(Negation(Variable "q"), Variable "r"));;
+let t3 = 
+  Et(
+    Implique(
+      Variable "q",
+      Variable "s"),
+    Implique(
+      Negation(Variable "p"),
+      Variable "r"));;
 
-balayage t3;;
 ensembleSatisfiabilite [t3];;
 
 (* Test 4 *)
-let t4 = Et(Ou(Negation(Variable "p"),
-	       Et(Variable "q", Variable "r")),
-	    Negation(Variable "q"));;
+let t4 =
+  Et(
+    Ou(
+      Negation(Variable "p"),
+      Et(Variable "q", Variable "r")),
+    Negation(Variable "q"));;
 
-balayage t4;;
 ensembleSatisfiabilite [t4];;
 
 (* Test 5 *)
 let f11 = Et(Variable "p", Implique(Variable "q", Variable "r"));;
 let f12 = Negation(Variable "p");;
 
-balayage f11;;
-balayage f12;;
 ensembleSatisfiabilite [f11;f12];;
 
 (* Test 6 *)
 let f21 = Implique(Equivalence(Variable "q", Variable "r"), Variable "p");;
 let f22 = Implique(Variable "q", Variable "r");;
 
-balayage f21;;
-balayage f22;;
 ensembleSatisfiabilite [f21;f22];;
 
 
-(* Test 7 *)
-let t17 = Ou(Variable "s", Negation(Variable "q"));;
-let t27 = Negation(Variable "s");;
+(* Test 7 *) 
+let t7 =
+  Equivalence (
+    Et(
+      Variable "p",
+      Variable "q"),
+    Ou(
+      Variable "p",
+      Variable "r"));;
 
-ensembleSatisfiabilite [t17;t27];;
-balayage t17;;
-balayage t27;;
-satisfiabilite t17;;
-satisfiabilite t27;;
+ensembleSatisfiabilite [t7];;
+
+(* Test 8 *)
+let t8 = 
+  Et(
+    Implique(
+      Valeur True,
+      Variable "p"),
+    Equivalence(
+      Valeur True,
+      Ou(
+	Variable "q",
+	Variable "r")));;
+
+ensembleSatisfiabilite [t8];;
+
+(* Test 9 *)
+let f31 = Implique(Variable "p", Variable "q");;
+let f32 = Equivalence(Variable "p", Variable "q");;
+
+ensembleSatisfiabilite [f31;f32];;
+
+(* test 10 *)
+let f41 = 
+  Ou(
+    Negation(Variable "f"),
+    Implique(
+      Variable "f",
+      Variable "p"));;
+let f42 = 
+  Negation(
+    Implique(
+      Et(
+	Variable "f",
+	Variable "p"),
+      Negation(Variable "p")));;
+
+ensembleSatisfiabilite [f41;f42];;
+
+(* Test 11 *)
+let t11 =
+  Equivalence(
+    Ou(
+      Negation( Variable "p"),
+      Negation( Variable "q")),
+    Et(
+      Negation (Variable "r"),
+      Variable "q"));;
+
+ensembleSatisfiabilite [t11];;
+
+(* Test 12 *)
+let f51 = 
+  Equivalence(
+    Et(
+      Variable "p",
+      Variable "q"),
+    Et( 
+      Negation (Variable "p"),
+      Variable "q"));;
+let f52 = 
+  Implique(
+    Valeur True,
+    Variable "q");;
+
+ensembleSatisfiabilite [f51; f52];;
+
+(* Test 13 *)
+let t13 = Equivalence(Implique(Variable "p", Variable "q"),Implique(Variable "r", Variable "s"));;
+
+ensembleSatisfiabilite [t13];;
+
+(* Test 14 *)
+let t14 = Negation(Implique(Ou(Variable "p", Variable "q"), Ou(Negation(Variable "s"),Negation(Variable "t"))));;
+
+ensembleSatisfiabilite [t14];;
+
+(* Test 15 *)
+let f61 = Ou(Variable "p", Variable "q");;
+let f62 = Negation(Variable "p");;
+let f63 = Implique( Variable "p", Variable "t");;
+let f64 = Equivalence (Valeur True, Variable "q");;
+
+ensembleSatisfiabilite [f61;f62;f63;f64];;
+
+
 
 
 
