@@ -238,7 +238,7 @@ let balayage = fun f1
 		       in if f2 = Valeur True then true
 			  else if reductionFormule
 				    (Negation (f2)) = Valeur True
-			  then true
+			  then false
 			  else aux t
 	in aux (listeVariables f);;
 
