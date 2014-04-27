@@ -183,14 +183,24 @@ let egals (listeUn:(string*bool) list) (listeDeux:(string*bool) list) =
   in aux listeDeux
 ;;
 
+(* l1 est la plus grande liste, si il existe un elements de l2 qui n'existe pas dans l1 on l'ajoute *)
+let ajoutListes l1 l2 =
+  let rec aux l2 mem =  
+  match l2 with 
+  | [] -> mem
+  | h::t -> if List.mem_assoc (fst h) l1 then aux t mem
+    else aux t mem@[h] 
+  in aux l2 l1 
+;;
+
 (* Si la listeCouple egale une liste de newListe on ajoute la plus grande *)
 let correspond (listeCouples:(string*bool) list) (newListe:(string*bool) list list) =
   let rec aux newListe listMem = 
     match newListe with 
     | []  -> listMem
     | h::t -> if egals h listeCouples then
-	if(List.length h) > (List.length listeCouples)then aux t (listMem @ [h])
-	else aux t (listMem @ [listeCouples])
+	if(List.length h) > (List.length listeCouples)then aux t (listMem @ [ajoutListes h listeCouples ])
+	else aux t (listMem @ [ajoutListes listeCouples h])
       else aux t listMem
   in aux newListe []
 ;;
@@ -212,6 +222,7 @@ let rec suppListeCouple (newListe:(string*bool) list list) (listeCouples:(string
   in aux listeFonc "" (satisfiabilite (List.hd listeFonc))
 ;;  
 
+ensembleSatisfiabilite [Et(Variable "a", Variable "v"); Et(Variable "a", Variable "c")];;
 (*********************************
 ********* Balayage.ml ************
 **********************************)
@@ -598,7 +609,7 @@ let rec toplevel (liste:'a formule_prop list) (listeFormule: 'a formule_prop lis
     if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
     else
       if balayage (List.hd (applicationConvertions liste)) = true then toplevel [] ((applicationConvertions liste)@listeFormule)
-      else print_string "Votre formule est correcte pour toute variables"
+      else begin print_string "Votre formule est valide\n"; toplevel [] listeFormule; end
   else if s = "end" then
     if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
     else begin print_string ((ensembleSatisfiabilite ((applicationConvertions liste)@listeFormule))); toplevel [] [] end
