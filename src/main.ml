@@ -34,7 +34,7 @@ let rec to_String (formule: 'a formule_prop) =
     | Variable x -> "Var " ^ x
 ;;
 
-(* Utiliser pour afficher la liste de Couple *)
+(* Utilisé pour afficher la liste de Couple *)
 let rec to_StringCouple (liste: (string*bool) list) =
   match liste with 
   | [] -> ""
@@ -56,7 +56,7 @@ let rec to_StringCoupleListe (liste: (string*bool) list list) =
 
 
 
-(* Substitution de Implique et Equivalence par leurs correspondances *)
+(* Substitution de "Implique" et "Equivalence" par leurs correspondances *)
 let rec elimination (formule: 'a formule_prop) =
   match (formule: 'a formule_prop) with
   | Ou (p,q) -> Ou ((elimination p), (elimination q))
@@ -171,7 +171,7 @@ let satisfiabilite = function (formule: 'a formule_prop) ->
   in aux [] [elimination formule]
 ;;
 
-(* Verifie si deux liste simple (string * bool) list sont égale *)
+(* Verifie si deux liste simple (string * bool) list sont égales *)
 let egals (listeUn:(string*bool) list) (listeDeux:(string*bool) list) =
   let rec aux listeDeux= 
     match listeDeux with 
@@ -203,22 +203,11 @@ let rec suppListeCouple (newListe:(string*bool) list list) (listeCouples:(string
   | h::t -> suppListeCouple newListe t (listeMem @ (correspond h newListe))
 ;;
 
-(* Supprime les doublons dans une liste *)
-let suppDouble (liste:(string*bool) list list) = 
-  let rec aux liste listeMem = 
-    match liste with 
-    | [] -> listeMem
-    | h::t -> if not (List.mem h t) then aux t listeMem@[h]
-      else aux t listeMem
-  in aux liste []
-;;
-
- 
 (* Algorithme d'ensemble de Satisfiabilite *)
  let ensembleSatisfiabilite (listeFonc: 'a formule_prop list) =
   let rec aux listeFonc affichage listeCouple = 
     match listeFonc with 
-    | [] -> affichage ^ to_StringCoupleListe(suppDouble(listeCouple))
+    | [] -> affichage ^ to_StringCoupleListe(listeCouple)
     | h::t ->  (aux t (affichage ^ (to_String h) ^ "  **  ") (suppListeCouple (satisfiabilite h) listeCouple []))
   in aux listeFonc "" (satisfiabilite (List.hd listeFonc))
 ;;  
@@ -238,10 +227,9 @@ let balayage = fun f1
 		       in if f2 = Valeur True then true
 			  else if reductionFormule
 				    (Negation (f2)) = Valeur True
-			  then false
+			  then true
 			  else aux t
 	in aux (listeVariables f);;
-
 
 (************************************
 ********* SaisieClavier.ml **********
@@ -265,7 +253,7 @@ let rec formuleCorrecte (formule: 'a formule_prop) =
   | Equivalence (p,q) ->(formuleCorrecte p) && (formuleCorrecte q)
 ;;
 
-
+(* Methode pour réduire vers une seul formule propositionnelle *)
 let convertions (liste:'a formule_prop list) = 
   let rec aux liste = 
     match liste with 
@@ -517,7 +505,7 @@ let convertions (liste:'a formule_prop list) =
 ;;
 
 
-(* Applique autant que possible formuleCorrecte *)
+(* Applique autant que possible formuleCorrecte et convertions *)
 let rec applicationConvertions (liste: 'a formule_prop list) =
   let listeDeux = (convertions liste) in
   if (listeDeux = liste) then 
@@ -608,7 +596,9 @@ let rec toplevel (liste:'a formule_prop list) (listeFormule: 'a formule_prop lis
   else if s = "help" then begin print_string (textHelp); toplevel liste listeFormule end
   else if s = "again" then
     if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
-    else toplevel [] ((applicationConvertions liste)@listeFormule)
+    else
+      if balayage (List.hd (applicationConvertions liste)) = true then toplevel [] ((applicationConvertions liste)@listeFormule)
+      else print_string "Votre formule est correcte pour toute variables"
   else if s = "end" then
     if (List.length liste) = 0 then begin print_string "Erreur : Vous n'avez pas rentrer de formule. \n"; toplevel liste listeFormule end
     else begin print_string ((ensembleSatisfiabilite ((applicationConvertions liste)@listeFormule))); toplevel [] [] end
